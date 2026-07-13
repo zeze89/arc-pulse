@@ -28,6 +28,9 @@ function bufToB64(buf) {
 // Circle requires a freshly-encrypted ciphertext of the entity secret on every
 // single write call — ciphertexts are single-use, never reuse one across calls.
 export async function entitySecretCiphertext(env) {
+  if (!env.CIRCLE_API_KEY || !env.CIRCLE_ENTITY_SECRET || !env.CIRCLE_ENTITY_PUBLIC_KEY) {
+    throw new Error('Circle credentials not configured on the server yet (CIRCLE_API_KEY / CIRCLE_ENTITY_SECRET / CIRCLE_ENTITY_PUBLIC_KEY).');
+  }
   const key = await crypto.subtle.importKey(
     'spki',
     pemToBuf(env.CIRCLE_ENTITY_PUBLIC_KEY),
