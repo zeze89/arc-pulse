@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arc Pulse — Live Arc Testnet Dashboard</title>
+<meta name="description" content="Real-time dashboard for Arc Testnet, Circle's USDC-gas Layer-1. Live blocks, dollar-denominated fees, balance lookup.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='42' fill='none' stroke='%2358F5A6' stroke-width='10'/><circle cx='50' cy='50' r='12' fill='%2358F5A6'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#060907;
+  --bg-raise:#0b100c;
+  --line:#1a231c;
+  --line-soft:#121a14;
+  --ink:#e8f2ea;
+  --ink-dim:#8fa596;
+  --ink-faint:#54695b;
+  --mint:#58f5a6;
+  --mint-dim:#2e9c68;
+  --usdc:#4f8fea;
+  --red:#ff6d5e;
+  --mono:'IBM Plex Mono',ui-monospace,monospace;
+  --serif:'Instrument Serif',Georgia,serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--mono);
+  font-size:14px;
+  line-height:1.55;
+  min-height:100vh;
+  overflow-x:hidden;
+}
+/* atmosphere: faint grid + radial glow + grain */
+body::before{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:
+    radial-gradient(ellipse 70% 45% at 50% -8%, rgba(88,245,166,.075), transparent 60%),
+    linear-gradient(var(--line-soft) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);
+  background-size:100% 100%, 44px 44px, 44px 44px;
+}
+body::after{
+  content:"";position:fixed;inset:-50%;z-index:1;pointer-events:none;opacity:.5;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E");
+  animation:grain 7s steps(8) infinite;
+}
+@keyframes grain{
+  0%,100%{transform:translate(0,0)}25%{transform:translate(2%,-3%)}
+  50%{transform:translate(-2%,2%)}75%{transform:translate(3%,1%)}
+}
+.wrap{position:relative;z-index:2;max-width:1180px;margin:0 auto;padding:0 28px}
+
+/* ---------- header ---------- */
+header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:26px 0 22px;border-bottom:1px solid var(--line);
+}
+.brand{display:flex;align-items:baseline;gap:14px}
+.brand h1{
+  font-family:var(--serif);font-weight:400;font-size:30px;letter-spacing:.01em;
+}
+.brand h1 em{color:var(--mint);font-style:italic}
+.brand .tag{font-size:11px;color:var(--ink-faint);letter-spacing:.14em;text-transform:uppercase}
+.status{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--ink-dim)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--red);position:relative}
+.dot.live{background:var(--mint)}
+.dot.live::after{
+  content:"";position:absolute;inset:-4px;border-radius:50%;
+  border:1px solid var(--mint);animation:ping 1.8s ease-out infinite;
+}
+@keyframes ping{0%{transform:scale(.5);opacity:.9}100%{transform:scale(1.7);opacity:0}}
+
+/* ---------- hero ---------- */
+.hero{
+  display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:end;
+  padding:64px 0 48px;
+}
+.hero-copy h2{
+  font-family:var(--serif);font-weight:400;font-size:clamp(38px,5.2vw,58px);
+  line-height:1.06;letter-spacing:-.01em;
+}
+.hero-copy h2 em{color:var(--mint);font-style:italic}
+.hero-copy p{margin-top:18px;max-width:46ch;color:var(--ink-dim);font-size:13.5px}
+.hero-copy p a{color:var(--usdc);text-decoration:none;border-bottom:1px solid rgba(79,143,234,.35)}
+.hero-block{
+  border:1px solid var(--line);background:var(--bg-raise);
+  padding:26px 28px 22px;position:relative;overflow:hidden;
+}
+.hero-block::before{
+  content:"";position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--mint),transparent);
+  animation:sweep 3.2s linear infinite;
+}
+@keyframes sweep{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+.hero-block .lbl{font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint)}
+.hero-block .big{
+  font-size:clamp(34px,4vw,50px);font-weight:300;letter-spacing:.02em;
+  color:var(--mint);margin:6px 0 2px;font-variant-numeric:tabular-nums;
+  text-shadow:0 0 26px rgba(88,245,166,.3);
+}
+.hero-block .sub{font-size:11.5px;color:var(--ink-faint)}
+.hero-block .big.flash{animation:flash .5s ease}
+@keyframes flash{0%{color:#fff;text-shadow:0 0 34px rgba(255,255,255,.55)}100%{color:var(--mint)}}
+
+/* ---------- stat strip ---------- */
+.stats{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  border:1px solid var(--line);border-left:none;
+  margin-bottom:56px;
+}
+.stat{
+  border-left:1px solid var(--line);background:rgba(11,16,12,.6);
+  padding:18px 20px 16px;position:relative;
+}
+.stat .k{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint)}
+.stat .v{font-size:22px;font-weight:400;margin-top:6px;font-variant-numeric:tabular-nums}
+.stat .v .unit{font-size:12px;color:var(--ink-dim);margin-left:4px}
+.stat .n{font-size:11px;color:var(--ink-faint);margin-top:3px}
+.stat .v.mint{color:var(--mint)}
+.stat .v.usdc{color:var(--usdc)}
+
+/* ---------- section titles ---------- */
+.sect{display:flex;align-items:baseline;gap:14px;margin:0 0 16px}
+.sect h3{font-family:var(--serif);font-weight:400;font-size:24px}
+.sect .rule{flex:1;height:1px;background:var(--line)}
+.sect .hint{font-size:11px;color:var(--ink-faint);letter-spacing:.08em}
+
+/* ---------- feeds ---------- */
+.feeds{display:grid;grid-template-columns:1fr 1.25fr;gap:32px;margin-bottom:64px}
+.feed{border:1px solid var(--line);background:var(--bg-raise)}
+.feed-head{
+  display:grid;padding:10px 16px;border-bottom:1px solid var(--line);
+  font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint);
+}
+.blocks .feed-head{grid-template-columns:1.1fr .7fr .9fr .7fr}
+.txs .feed-head{grid-template-columns:1.15fr 1.5fr .9fr .55fr}
+.row{
+  display:grid;padding:11px 16px;border-bottom:1px solid var(--line-soft);
+  font-size:12.5px;align-items:baseline;font-variant-numeric:tabular-nums;
+  transition:background .2s;
+}
+.row:last-child{border-bottom:none}
+.row:hover{background:rgba(88,245,166,.045)}
+.blocks .row{grid-template-columns:1.1fr .7fr .9fr .7fr}
+.txs .row{grid-template-columns:1.15fr 1.5fr .9fr .55fr}
+.row.new{animation:slidein .45s ease}
+@keyframes slidein{0%{background:rgba(88,245,166,.16);transform:translateY(-6px);opacity:0}100%{opacity:1}}
+.row a{color:var(--ink);text-decoration:none;border-bottom:1px dotted var(--ink-faint)}
+.row a:hover{color:var(--mint);border-color:var(--mint)}
+.row .blocknum{color:var(--mint)}
+.row .dim{color:var(--ink-dim)}
+.row .faint{color:var(--ink-faint);font-size:11.5px}
+.row .val{color:var(--usdc)}
+.arrow{color:var(--ink-faint);padding:0 5px}
+.empty{padding:32px 16px;text-align:center;color:var(--ink-faint);font-size:12px}
+.gasbar{display:inline-block;width:44px;height:5px;background:var(--line);vertical-align:middle;margin-right:8px;position:relative}
+.gasbar i{position:absolute;left:0;top:0;bottom:0;background:var(--mint-dim)}
+
+/* ---------- balance checker ---------- */
+.checker{margin-bottom:64px}
+.checker-box{
+  border:1px solid var(--line);background:var(--bg-raise);padding:28px;
+  display:grid;grid-template-columns:1fr auto;gap:14px;align-items:start;
+}
+.checker input{
+  width:100%;background:var(--bg);border:1px solid var(--line);color:var(--ink);
+  font-family:var(--mono);font-size:13.5px;padding:13px 16px;outline:none;
+  transition:border-color .2s;
+}
+.checker input:focus{border-color:var(--mint-dim)}
+.checker input::placeholder{color:var(--ink-faint)}
+button{
+  font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+  background:var(--mint);color:#04150c;border:none;padding:14px 26px;cursor:pointer;
+  font-weight:600;transition:transform .12s, box-shadow .2s;
+}
+button:hover{transform:translateY(-1px);box-shadow:0 0 24px rgba(88,245,166,.35)}
+button:active{transform:translateY(0)}
+button.ghost{
+  background:transparent;color:var(--mint);border:1px solid var(--mint-dim);
+}
+button.ghost:hover{box-shadow:0 0 18px rgba(88,245,166,.2)}
+.checker-result{
+  grid-column:1/-1;display:none;gap:0;
+  grid-template-columns:repeat(3,1fr);border:1px solid var(--line);border-left:none;margin-top:6px;
+}
+.checker-result.show{display:grid;animation:slidein .4s ease}
+.checker-result .cell{border-left:1px solid var(--line);padding:16px 20px}
+.checker-result .cell .k{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint)}
+.checker-result .cell .v{font-size:20px;margin-top:5px;font-variant-numeric:tabular-nums}
+.checker-result .cell .v.mint{color:var(--mint)}
+.checker-err{grid-column:1/-1;color:var(--red);font-size:12px;display:none}
+.checker-err.show{display:block}
+
+/* ---------- footer ---------- */
+.about{
+  display:grid;grid-template-columns:1fr 1fr;gap:40px;
+  border-top:1px solid var(--line);padding:44px 0 30px;
+}
+.about h4{font-family:var(--serif);font-weight:400;font-size:20px;margin-bottom:12px}
+.about h4 em{color:var(--mint)}
+.about p{color:var(--ink-dim);font-size:12.5px;max-width:52ch}
+.links{display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+.links a{
+  color:var(--ink-dim);text-decoration:none;font-size:12.5px;
+  border-bottom:1px dotted var(--ink-faint);transition:color .15s;
+}
+.links a:hover{color:var(--mint);border-color:var(--mint)}
+.links a .ext{color:var(--ink-faint);font-size:10px;margin-left:6px}
+footer{
+  border-top:1px solid var(--line);padding:18px 0 26px;
+  display:flex;justify-content:space-between;font-size:11px;color:var(--ink-faint);
+}
+footer a{color:var(--ink-faint)}
+
+/* ---------- load-in reveal ---------- */
+.reveal{opacity:0;transform:translateY(14px);animation:reveal .7s ease forwards}
+@keyframes reveal{to{opacity:1;transform:none}}
+.d1{animation-delay:.05s}.d2{animation-delay:.15s}.d3{animation-delay:.25s}
+.d4{animation-delay:.35s}.d5{animation-delay:.45s}
+
+@media(max-width:860px){
+  .hero{grid-template-columns:1fr;gap:28px;padding:44px 0 36px}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .stat{border-top:1px solid var(--line)}
+  .stats{border-top:none}
+  .feeds{grid-template-columns:1fr}
+  .checker-box{grid-template-columns:1fr}
+  .checker-result{grid-template-columns:1fr}
+  .checker-result .cell{border-left:none;border-top:1px solid var(--line)}
+  .about{grid-template-columns:1fr}
+  .txs .feed-head,.txs .row{grid-template-columns:1.1fr 1.4fr .8fr}
+  .txs .feed-head span:last-child,.txs .row span:last-child{display:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="reveal d1">
+  <div class="brand">
+    <h1>Arc<em>Pulse</em></h1>
+    <span class="tag">testnet observatory</span>
+  </div>
+  <div class="status">
+    <span class="dot" id="statusDot"></span>
+    <span id="statusText">connecting…</span>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="hero-copy reveal d2">
+    <h2>The dollar-native chain,<br>measured <em>in real time.</em></h2>
+    <p>Arc is <a href="https://www.circle.com" target="_blank" rel="noopener">Circle</a>'s Layer-1 where <strong>USDC is the gas token</strong> — every fee is priced in dollars, finality lands in under a second. This page watches the public testnet live, straight from your browser via JSON-RPC. No backend, no tracking.</p>
+  </div>
+  <div class="hero-block reveal d3">
+    <div class="lbl">Latest block</div>
+    <div class="big" id="blockNum">—</div>
+    <div class="sub">chain id 5042002 · <span id="blockAge">…</span></div>
+  </div>
+</section>
+
+<section class="stats reveal d4">
+  <div class="stat">
+    <div class="k">Transfer fee</div>
+    <div class="v usdc" id="feeUsd">—</div>
+    <div class="n">21k gas × current price</div>
+  </div>
+  <div class="stat">
+    <div class="k">Gas price</div>
+    <div class="v" id="gasPrice">—</div>
+    <div class="n">dollar-denominated</div>
+  </div>
+  <div class="stat">
+    <div class="k">Block time</div>
+    <div class="v mint" id="blockTime">—</div>
+    <div class="n">avg, last 20 blocks</div>
+  </div>
+  <div class="stat">
+    <div class="k">Throughput</div>
+    <div class="v" id="tps">—</div>
+    <div class="n">tx/s, last 20 blocks</div>
+  </div>
+</section>
+
+<section class="feeds reveal d5">
+  <div>
+    <div class="sect"><h3>Blocks</h3><div class="rule"></div><span class="hint">auto-refresh</span></div>
+    <div class="feed blocks">
+      <div class="feed-head"><span>Height</span><span>Txs</span><span>Gas used</span><span>Age</span></div>
+      <div id="blockRows"><div class="empty">waiting for chain…</div></div>
+    </div>
+  </div>
+  <div>
+    <div class="sect"><h3>Transactions</h3><div class="rule"></div><span class="hint">newest first</span></div>
+    <div class="feed txs">
+      <div class="feed-head"><span>Hash</span><span>From → To</span><span>Value</span><span>Block</span></div>
+      <div id="txRows"><div class="empty">waiting for transactions…</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="checker">
+  <div class="sect"><h3>Balance lookup</h3><div class="rule"></div><span class="hint">native USDC</span></div>
+  <div class="checker-box">
+    <input id="addrInput" placeholder="0x… paste any Arc testnet address" spellcheck="false" autocomplete="off">
+    <button id="checkBtn">Check</button>
+    <div class="checker-err" id="checkErr"></div>
+    <div class="checker-result" id="checkResult">
+      <div class="cell"><div class="k">Balance</div><div class="v mint" id="resBalance">—</div></div>
+      <div class="cell"><div class="k">Nonce (tx count)</div><div class="v" id="resNonce">—</div></div>
+      <div class="cell"><div class="k">Explorer</div><div class="v"><a id="resLink" href="#" target="_blank" rel="noopener" style="font-size:13px;color:var(--usdc);text-decoration:none;border-bottom:1px dotted var(--usdc)">open in Arcscan ↗</a></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="about">
+  <div>
+    <h4>Build on <em>Arc</em></h4>
+    <p>Arc Testnet speaks standard Ethereum JSON-RPC — your existing tooling (ethers, viem, Foundry, Hardhat) works out of the box. Gas is USDC with 18 native decimals, so fees are always legible in dollars. Grab test USDC from the faucet and deploy.</p>
+    <p style="margin-top:14px"><button class="ghost" id="addChainBtn">+ Add Arc Testnet to wallet</button></p>
+  </div>
+  <div class="links">
+    <a href="https://docs.arc.io" target="_blank" rel="noopener">Developer docs<span class="ext">docs.arc.io</span></a>
+    <a href="https://faucet.circle.com" target="_blank" rel="noopener">USDC / EURC faucet<span class="ext">faucet.circle.com</span></a>
+    <a href="https://testnet.arcscan.app" target="_blank" rel="noopener">Block explorer<span class="ext">testnet.arcscan.app</span></a>
+    <a href="https://rpc.testnet.arc.network" target="_blank" rel="noopener">Public RPC<span class="ext">rpc.testnet.arc.network</span></a>
+  </div>
+</section>
+
+<footer>
+  <span>Arc Pulse — unofficial community dashboard. Not affiliated with Circle.</span>
+  <span>data: public JSON-RPC · client-side only</span>
+</footer>
+
+</div>
+
+<script>
+(() => {
+const RPCS = [
+  'https://rpc.testnet.arc.network',
+  'https://rpc.drpc.testnet.arc.network',
+  'https://rpc.blockdaemon.testnet.arc.network',
+];
+const CHAIN_ID = 5042002;
+const CHAIN_ID_HEX = '0x4cef52';
+const EXPLORER = 'https://testnet.arcscan.app';
+const POLL_MS = 2500;
+const KEEP_BLOCKS = 8, KEEP_TXS = 12, STAT_WINDOW = 20;
+
+let rpcIdx = 0, rpcId = 1;
+let blocks = [];   // newest first, {num, ts, txCount, gasUsed, gasLimit}
+let txs = [];      // newest first
+let lastSeen = 0n;
+let alive = false;
+
+async function rpc(method, params = []) {
+  for (let attempt = 0; attempt < RPCS.length; attempt++) {
+    const url = RPCS[(rpcIdx + attempt) % RPCS.length];
+    try {
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: rpcId++, method, params }),
+      });
+      const j = await r.json();
+      if (j.error) throw new Error(j.error.message);
+      rpcIdx = (rpcIdx + attempt) % RPCS.length;
+      return j.result;
+    } catch (e) { /* try next endpoint */ }
+  }
+  throw new Error('all RPC endpoints failed');
+}
+
+const $ = id => document.getElementById(id);
+const hexToBig = h => BigInt(h ?? '0x0');
+const short = (s, a = 8, b = 6) => s ? s.slice(0, a) + '…' + s.slice(-b) : '—';
+
+function fmtUnits(wei, decimals = 18, maxFrac = 4) {
+  const neg = wei < 0n; if (neg) wei = -wei;
+  const base = 10n ** BigInt(decimals);
+  const whole = wei / base;
+  let frac = (wei % base).toString().padStart(decimals, '0').slice(0, maxFrac).replace(/0+$/, '');
+  const w = whole.toLocaleString('en-US');
+  return (neg ? '-' : '') + w + (frac ? '.' + frac : '');
+}
+
+function fmtAge(ts) {
+  const s = Math.max(0, Math.floor(Date.now() / 1000) - ts);
+  if (s < 2) return 'just now';
+  if (s < 60) return s + 's ago';
+  if (s < 3600) return Math.floor(s / 60) + 'm ago';
+  return Math.floor(s / 3600) + 'h ago';
+}
+
+function setStatus(ok, text) {
+  alive = ok;
+  $('statusDot').className = 'dot' + (ok ? ' live' : '');
+  $('statusText').textContent = text;
+}
+
+function pushBlock(b, isNew) {
+  const num = hexToBig(b.number);
+  if (blocks.some(x => x.num === num)) return;
+  const entry = {
+    num,
+    ts: Number(hexToBig(b.timestamp)),
+    txCount: b.transactions.length,
+    gasUsed: hexToBig(b.gasUsed),
+    gasLimit: hexToBig(b.gasLimit || '0x1'),
+    isNew,
+  };
+  blocks.push(entry);
+  blocks.sort((a, c) => (c.num > a.num ? 1 : -1));
+  blocks = blocks.slice(0, STAT_WINDOW);
+
+  for (const t of b.transactions) {
+    if (typeof t === 'string') continue;
+    if (txs.some(x => x.hash === t.hash)) continue;
+    txs.push({
+      hash: t.hash, from: t.from, to: t.to,
+      value: hexToBig(t.value), block: num, isNew,
+    });
+  }
+  txs.sort((a, c) => (c.block > a.block ? 1 : c.block < a.block ? -1 : 0));
+  txs = txs.slice(0, KEEP_TXS);
+}
+
+function render() {
+  if (!blocks.length) return;
+  const head = blocks[0];
+
+  const bn = $('blockNum');
+  const numStr = head.num.toLocaleString('en-US');
+  if (bn.textContent !== numStr) {
+    bn.textContent = numStr;
+    bn.classList.remove('flash'); void bn.offsetWidth; bn.classList.add('flash');
+  }
+  $('blockAge').textContent = fmtAge(head.ts);
+
+  // stats over window
+  if (blocks.length >= 2) {
+    const oldest = blocks[blocks.length - 1];
+    const span = head.ts - oldest.ts;
+    const n = blocks.length - 1;
+    const bt = span / n;
+    $('blockTime').innerHTML = (bt < 1 ? '&lt;1' : bt.toFixed(1)) + '<span class="unit">s</span>';
+    const totalTx = blocks.reduce((a, b2) => a + b2.txCount, 0);
+    $('tps').innerHTML = (span > 0 ? (totalTx / span).toFixed(2) : totalTx.toFixed(0)) + '<span class="unit">tx/s</span>';
+  }
+
+  // blocks feed
+  $('blockRows').innerHTML = blocks.slice(0, KEEP_BLOCKS).map(b => {
+    const pct = b.gasLimit > 0n ? Number(b.gasUsed * 100n / b.gasLimit) : 0;
+    return `<div class="row${b.isNew ? ' new' : ''}">
+      <span><a class="blocknum" href="${EXPLORER}/block/${b.num}" target="_blank" rel="noopener">#${b.num.toLocaleString('en-US')}</a></span>
+      <span class="dim">${b.txCount}</span>
+      <span class="faint"><span class="gasbar"><i style="width:${Math.min(100, pct)}%"></i></span>${pct}%</span>
+      <span class="faint" data-age="${b.ts}">${fmtAge(b.ts)}</span>
+    </div>`;
+  }).join('');
+  blocks.forEach(b => b.isNew = false);
+
+  // txs feed
+  $('txRows').innerHTML = txs.length ? txs.map(t => `<div class="row${t.isNew ? ' new' : ''}">
+      <span><a href="${EXPLORER}/tx/${t.hash}" target="_blank" rel="noopener">${short(t.hash)}</a></span>
+      <span class="faint">${short(t.from, 6, 4)}<span class="arrow">→</span>${t.to ? short(t.to, 6, 4) : '<em>create</em>'}</span>
+      <span class="val">${fmtUnits(t.value, 18, 4)} <span class="faint">USDC</span></span>
+      <span class="faint">#${t.block.toLocaleString('en-US')}</span>
+    </div>`).join('')
+    : '<div class="empty">no transactions in recent blocks — testnet is quiet right now</div>';
+  txs.forEach(t => t.isNew = false);
+}
+
+async function refreshGas() {
+  try {
+    const gp = hexToBig(await rpc('eth_gasPrice'));
+    const gwei = Number(gp) / 1e9;
+    $('gasPrice').innerHTML = (gwei >= 100 ? gwei.toFixed(0) : gwei.toFixed(2)) + '<span class="unit">gwei</span>';
+    const fee = gp * 21000n; // wei, 18 decimals == USD
+    const feeNum = Number(fee) / 1e18;
+    $('feeUsd').innerHTML = '$' + (feeNum < 0.000001 ? feeNum.toExponential(2) : feeNum.toFixed(6).replace(/0+$/, '').replace(/\.$/, ''));
+  } catch (e) { /* keep last */ }
+}
+
+async function poll(first = false) {
+  try {
+    const latest = hexToBig(await rpc('eth_blockNumber'));
+    if (latest > lastSeen) {
+      const from = first ? latest - BigInt(KEEP_BLOCKS - 1)
+                         : (latest - lastSeen > 4n ? latest - 4n : lastSeen + 1n);
+      const nums = [];
+      for (let n = from; n <= latest; n++) nums.push(n);
+      const results = await Promise.all(nums.map(n =>
+        rpc('eth_getBlockByNumber', ['0x' + n.toString(16), true]).catch(() => null)));
+      for (const b of results) if (b) pushBlock(b, !first);
+      lastSeen = latest;
+      render();
+    }
+    setStatus(true, 'live · rpc.testnet.arc.network');
+  } catch (e) {
+    setStatus(false, 'rpc unreachable — retrying');
+  }
+}
+
+// tick ages every second without refetch
+setInterval(() => {
+  if (!blocks.length) return;
+  $('blockAge').textContent = fmtAge(blocks[0].ts);
+  document.querySelectorAll('[data-age]').forEach(el => {
+    el.textContent = fmtAge(Number(el.dataset.age));
+  });
+}, 1000);
+
+// balance checker
+async function check() {
+  const addr = $('addrInput').value.trim();
+  const err = $('checkErr'), res = $('checkResult');
+  err.classList.remove('show'); res.classList.remove('show');
+  if (!/^0x[0-9a-fA-F]{40}$/.test(addr)) {
+    err.textContent = 'That does not look like an EVM address (0x + 40 hex chars).';
+    err.classList.add('show'); return;
+  }
+  $('checkBtn').textContent = '…';
+  try {
+    const [bal, nonce] = await Promise.all([
+      rpc('eth_getBalance', [addr, 'latest']),
+      rpc('eth_getTransactionCount', [addr, 'latest']),
+    ]);
+    $('resBalance').textContent = fmtUnits(hexToBig(bal), 18, 6) + ' USDC';
+    $('resNonce').textContent = hexToBig(nonce).toString();
+    $('resLink').href = EXPLORER + '/address/' + addr;
+    res.classList.add('show');
+  } catch (e) {
+    err.textContent = 'RPC error: ' + e.message;
+    err.classList.add('show');
+  }
+  $('checkBtn').textContent = 'Check';
+}
+$('checkBtn').addEventListener('click', check);
+$('addrInput').addEventListener('keydown', e => { if (e.key === 'Enter') check(); });
+
+// add chain to wallet
+$('addChainBtn').addEventListener('click', async () => {
+  if (!window.ethereum) {
+    alert('No EVM wallet detected. Install MetaMask (or similar), then try again.');
+    return;
+  }
+  try {
+    await window.ethereum.request({
+      method: 'wallet_addEthereumChain',
+      params: [{
+        chainId: CHAIN_ID_HEX,
+        chainName: 'Arc Testnet',
+        nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
+        rpcUrls: ['https://rpc.testnet.arc.network'],
+        blockExplorerUrls: [EXPLORER],
+      }],
+    });
+  } catch (e) { /* user rejected */ }
+});
+
+// boot
+refreshGas();
+poll(true);
+setInterval(() => poll(false), POLL_MS);
+setInterval(refreshGas, 15000);
+})();
+</script>
+</body>
+</html>
