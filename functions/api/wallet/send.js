@@ -17,7 +17,8 @@ export async function onRequestPost({ request, env }) {
 
     const tx = await circlePost(env, '/developer/transactions/transfer', {
       walletId,
-      tokenId: usdc.token.id,
+      // Native tokens (Arc's USDC-as-gas) must omit tokenId/tokenAddress entirely.
+      ...(usdc.token.isNative ? {} : { tokenId: usdc.token.id }),
       destinationAddress,
       amounts: [String(amount)],
       fee: { type: 'level', config: { feeLevel: 'MEDIUM' } },
