@@ -67,7 +67,7 @@ async function circleFetch(env, method, path, body) {
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
     const msg = json?.message || json?.error?.message || `Circle API ${res.status}`;
-    throw new Error(msg);
+    throw new Error(msg + ' | code=' + json?.code + ' | raw=' + JSON.stringify(json));
   }
   return json;
 }

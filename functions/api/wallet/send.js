@@ -1,6 +1,7 @@
 import { entitySecretCiphertext, circlePost, findUsdcBalance } from '../../_lib/circle.js';
 
 export async function onRequestPost({ request, env }) {
+  let usdc;
   try {
     const { walletId, destinationAddress, amount } = await request.json();
     if (!walletId || !destinationAddress || !amount) {
@@ -10,7 +11,7 @@ export async function onRequestPost({ request, env }) {
       return Response.json({ error: 'destinationAddress is not a valid EVM address' }, { status: 400 });
     }
 
-    const { usdc } = await findUsdcBalance(env, walletId);
+    ({ usdc } = await findUsdcBalance(env, walletId));
     if (!usdc) {
       return Response.json({ error: 'No USDC balance found on this wallet yet — fund it from faucet.circle.com first' }, { status: 400 });
     }
@@ -31,6 +32,6 @@ export async function onRequestPost({ request, env }) {
       state: tx.data.state,
     });
   } catch (e) {
-    return Response.json({ error: e.message }, { status: 500 });
+    return Response.json({ error: e.message, debugUsdcToken: usdc?.token }, { status: 500 });
   }
 }
