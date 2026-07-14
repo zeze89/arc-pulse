@@ -15,6 +15,20 @@ export async function onRequestGet({ env }) {
     selfTest = { ok: false, error: e.message };
   }
 
+  let rawCall;
+  try {
+    const ct2 = await entitySecretCiphertext(env);
+    const res = await fetch('https://api.circle.com/v1/w3s/developer/walletSets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.CIRCLE_API_KEY}` },
+      body: JSON.stringify({ name: 'debug-probe', entitySecretCiphertext: ct2, idempotencyKey: crypto.randomUUID() }),
+    });
+    const json = await res.json().catch(() => ({}));
+    rawCall = { status: res.status, body: json };
+  } catch (e) {
+    rawCall = { error: e.message };
+  }
+
   return Response.json({
     apiKeyLen: apiKey.length,
     apiKeyColons: (apiKey.match(/:/g) || []).length,
@@ -25,5 +39,6 @@ export async function onRequestGet({ env }) {
     pubKeyLast40: JSON.stringify(pub.slice(-40)),
     pubKeyLineCount: pub.split('\n').length,
     selfTest,
+    rawCall,
   });
 }
