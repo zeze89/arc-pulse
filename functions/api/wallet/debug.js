@@ -2,10 +2,18 @@
 // lengths and the non-secret PEM boilerplate. Delete after debugging.
 import { entitySecretCiphertext } from '../../_lib/circle.js';
 
+async function sha256Hex(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 export async function onRequestGet({ env }) {
   const pub = env.CIRCLE_ENTITY_PUBLIC_KEY || '';
   const secret = env.CIRCLE_ENTITY_SECRET || '';
   const apiKey = env.CIRCLE_API_KEY || '';
+
+  const secretHash = await sha256Hex(secret.trim());
+  const pubKeyHash = await sha256Hex(pub.trim());
 
   let selfTest;
   try {
@@ -56,6 +64,8 @@ export async function onRequestGet({ env }) {
     pubKeyFirst40: JSON.stringify(pub.slice(0, 40)),
     pubKeyLast40: JSON.stringify(pub.slice(-40)),
     pubKeyLineCount: pub.split('\n').length,
+    secretHash,
+    pubKeyHash,
     selfTest,
     pubKeyMatch,
     rawCall,
