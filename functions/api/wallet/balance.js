@@ -15,7 +15,7 @@ export async function onRequestGet({ request, env }) {
 
     if (transactionId) {
       const tx = await circleGet(env, `/transactions/${transactionId}`);
-      out.transaction = { state: tx.data.transaction.state, txHash: tx.data.transaction.txHash || null };
+      out.transaction = { state: tx.data.transaction.state, txHash: tx.data.transaction.txHash || null, errorReason: tx.data.transaction.errorReason || null, errorDetails: tx.data.transaction.errorDetails || null };
     }
 
     return Response.json(out);
