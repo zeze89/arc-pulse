@@ -1,9 +1,20 @@
 // TEMPORARY diagnostic endpoint — does not expose secret material, only
 // lengths and the non-secret PEM boilerplate. Delete after debugging.
+import { entitySecretCiphertext } from '../../_lib/circle.js';
+
 export async function onRequestGet({ env }) {
   const pub = env.CIRCLE_ENTITY_PUBLIC_KEY || '';
   const secret = env.CIRCLE_ENTITY_SECRET || '';
   const apiKey = env.CIRCLE_API_KEY || '';
+
+  let selfTest;
+  try {
+    const ct = await entitySecretCiphertext(env);
+    selfTest = { ok: true, ciphertextLen: ct.length, ciphertextFirst20: ct.slice(0, 20), ciphertextLast20: ct.slice(-20) };
+  } catch (e) {
+    selfTest = { ok: false, error: e.message };
+  }
+
   return Response.json({
     apiKeyLen: apiKey.length,
     apiKeyColons: (apiKey.match(/:/g) || []).length,
@@ -13,5 +24,6 @@ export async function onRequestGet({ env }) {
     pubKeyFirst40: JSON.stringify(pub.slice(0, 40)),
     pubKeyLast40: JSON.stringify(pub.slice(-40)),
     pubKeyLineCount: pub.split('\n').length,
+    selfTest,
   });
 }
