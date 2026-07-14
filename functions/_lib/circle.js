@@ -2,8 +2,10 @@ const CIRCLE_BASE = 'https://api.circle.com/v1/w3s';
 
 function pemToBuf(pem) {
   const b64 = pem
-    .replace(/-----BEGIN PUBLIC KEY-----/, '')
-    .replace(/-----END PUBLIC KEY-----/, '')
+    .replace(/\\n/g, '\n')          // in case newlines got stored as literal backslash-n
+    .split('\n')
+    .filter(line => !line.includes('-----'))  // drop BEGIN/END header+footer, whatever the label
+    .join('')
     .replace(/\s+/g, '');
   const raw = atob(b64);
   const buf = new Uint8Array(raw.length);
