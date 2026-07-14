@@ -14,7 +14,7 @@ function pemToBuf(pem) {
 }
 
 function hexToBytes(hex) {
-  const clean = hex.replace(/^0x/, '');
+  const clean = hex.trim().replace(/^0x/, '').replace(/\s+/g, '');
   const out = new Uint8Array(clean.length / 2);
   for (let i = 0; i < out.length; i++) out[i] = parseInt(clean.substr(i * 2, 2), 16);
   return out;
@@ -32,6 +32,13 @@ function bufToB64(buf) {
 export async function entitySecretCiphertext(env) {
   if (!env.CIRCLE_API_KEY || !env.CIRCLE_ENTITY_SECRET || !env.CIRCLE_ENTITY_PUBLIC_KEY) {
     throw new Error('Circle credentials not configured on the server yet (CIRCLE_API_KEY / CIRCLE_ENTITY_SECRET / CIRCLE_ENTITY_PUBLIC_KEY).');
+  }
+  const cleanSecret = env.CIRCLE_ENTITY_SECRET.trim().replace(/^0x/, '').replace(/\s+/g, '');
+  if (!/^[0-9a-fA-F]{64}$/.test(cleanSecret)) {
+    throw new Error(`CIRCLE_ENTITY_SECRET is not a valid 64-char hex string (got ${cleanSecret.length} chars) — check it wasn't set to the ciphertext by mistake.`);
+  }
+  if (!env.CIRCLE_ENTITY_PUBLIC_KEY.includes('BEGIN PUBLIC KEY') || !env.CIRCLE_ENTITY_PUBLIC_KEY.includes('END PUBLIC KEY')) {
+    throw new Error('CIRCLE_ENTITY_PUBLIC_KEY does not look like a full PEM (missing BEGIN/END markers).');
   }
   const key = await crypto.subtle.importKey(
     'spki',
