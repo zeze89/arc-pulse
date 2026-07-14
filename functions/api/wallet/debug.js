@@ -15,6 +15,24 @@ export async function onRequestGet({ env }) {
     selfTest = { ok: false, error: e.message };
   }
 
+  let pubKeyMatch;
+  try {
+    const res = await fetch('https://api.circle.com/v1/w3s/config/entity/publicKey', {
+      headers: { Authorization: `Bearer ${env.CIRCLE_API_KEY}` },
+    });
+    const json = await res.json();
+    const freshKey = json?.data?.publicKey || '';
+    pubKeyMatch = {
+      freshKeyLen: freshKey.length,
+      storedKeyLen: pub.length,
+      identical: freshKey.trim() === pub.trim(),
+      freshFirst40: JSON.stringify(freshKey.slice(0, 40)),
+      freshLast40: JSON.stringify(freshKey.slice(-40)),
+    };
+  } catch (e) {
+    pubKeyMatch = { error: e.message };
+  }
+
   let rawCall;
   try {
     const ct2 = await entitySecretCiphertext(env);
@@ -39,6 +57,7 @@ export async function onRequestGet({ env }) {
     pubKeyLast40: JSON.stringify(pub.slice(-40)),
     pubKeyLineCount: pub.split('\n').length,
     selfTest,
+    pubKeyMatch,
     rawCall,
   });
 }
