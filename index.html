@@ -694,7 +694,8 @@ async function pollTransaction(transactionId) {
         return;
       }
       if (state === 'FAILED' || state === 'CANCELLED') {
-        setWalletStatus('err', 'Transaction ' + state.toLowerCase() + '.');
+        const reason = j.transaction?.errorDetails || j.transaction?.errorReason;
+        setWalletStatus('err', 'Transaction ' + state.toLowerCase() + (reason ? ': ' + reason : '.'));
         return;
       }
       setWalletStatus('pending', 'Sending… (' + (state || 'pending') + ')');
