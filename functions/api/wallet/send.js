@@ -18,11 +18,11 @@ export async function onRequestPost({ request, env }) {
 
     const tx = await circlePost(env, '/developer/transactions/transfer', {
       walletId,
-      // Native tokens (Arc's USDC-as-gas) must omit tokenId/tokenAddress entirely.
-      ...(usdc.token.isNative ? {} : { tokenId: usdc.token.id }),
+      // Native tokens (Arc's USDC-as-gas) need `blockchain` instead of `tokenId`.
+      ...(usdc.token.isNative ? { blockchain: usdc.token.blockchain } : { tokenId: usdc.token.id }),
       destinationAddress,
       amounts: [String(amount)],
-      fee: { type: 'level', config: { feeLevel: 'MEDIUM' } },
+      feeLevel: 'MEDIUM',
       entitySecretCiphertext: await entitySecretCiphertext(env),
       idempotencyKey: crypto.randomUUID(),
     });
